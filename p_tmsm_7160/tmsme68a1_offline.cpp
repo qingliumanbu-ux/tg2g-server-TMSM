@@ -75,7 +75,13 @@ int f_tmsme68a1_offline(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * 
 			case DB_KIND_MSSQL:	        // MS SQL Server数据库
 			case DB_KIND_ORACLE:	    // Oracle 数据库
 			default:
-				sqlstr = "select DAYS(DATE(TIMESTAMP ('" + ttmsm68["OFF_LINE_TIME"].ToString() + "'))) - DAYS(DATE(TIMESTAMP ('" + ttmsm68["ON_LINE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+// DM8 适配 CHANGE-112:查询。SYSIBM 辅助表改为 DUAL; DAYS() 天数差改用 DATEDIFF。
+// 改写原因：SYSIBM 辅助表改为 DUAL；DAYS() 天数差改用 DATEDIFF(DAY,起点,终点)；依据 DM 官方文档,DM8 尚未实测。
+// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+// 原 SQL（完整保留）：
+				// sqlstr = "select DAYS(DATE(TIMESTAMP ('" + ttmsm68["OFF_LINE_TIME"].ToString() + "'))) - DAYS(DATE(TIMESTAMP ('" + ttmsm68["ON_LINE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+// DM8 SQL：
+				sqlstr = "select DATEDIFF(DAY, DATE(TIMESTAMP ('" + ttmsm68["ON_LINE_TIME"].ToString() + "')), DATE(TIMESTAMP ('" + ttmsm68["OFF_LINE_TIME"].ToString() + "'))) from DUAL";
 				break;
 			}
 			cmd_inq.Parameters.Clear();

@@ -159,7 +159,15 @@ int f_tmsm01_60106(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 		case DB_KIND_MSSQL:	        // MS SQL Server数据库
 		case DB_KIND_ORACLE:	    // Oracle 数据库
 		default:
-			sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + datetime + "')  - TIMESTAMP('" + usage_st + "'))) from SYSIBM.SYSDUMMY1";
+// DM8 适配 CHANGE-340:查询钢包盛钢时长(分钟),写入 l_ladle_fill_time。
+// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟,钢包盛钢时长) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+//   改为 DATEDIFF(SECOND,起点=使用开始时间,终点=当前时间)/60,整数除法与 DB2 截断行为一致。
+//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+// 原 SQL（完整保留）：
+			// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + datetime + "')  - TIMESTAMP('" + usage_st + "'))) from SYSIBM.SYSDUMMY1";
+// DM8 SQL：
+			sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + usage_st + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + datetime + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 			break;
 		}
 		cmd_inq.Parameters.Clear();

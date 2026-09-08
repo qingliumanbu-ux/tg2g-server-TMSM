@@ -80,7 +80,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 		case DB_KIND_MSSQL:	        // MS SQL Server数据库
 		case DB_KIND_ORACLE:	    // Oracle 数据库
 		default:
-			sqlstr = "select DAYS(DATE(TIMESTAMP ('" + ttmsm66["CHANGE_TIME"].ToString() + "'))) - DAYS(DATE(TIMESTAMP ('" + ttmsm66["REC_CREATE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+			// DM8 适配 CHANGE-108:查询设备状态记录创建(REC_CREATE_TIME)到变更(CHANGE_TIME)的日历天数差。
+			// 改写原因：DB2 DAYS(日期) 差改为 DM8 DATEDIFF(DAY,·),按 HR-002 确认口径①(实际完整时长)
+			//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+			//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+			// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+			// 原 SQL（完整保留）：
+			// sqlstr = "select DAYS(DATE(TIMESTAMP ('" + ttmsm66["CHANGE_TIME"].ToString() + "'))) - DAYS(DATE(TIMESTAMP ('" + ttmsm66["REC_CREATE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+			// DM8 SQL：
+			sqlstr = "select DATEDIFF(DAY, TO_TIMESTAMP('" + ttmsm66["REC_CREATE_TIME"].ToString() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + ttmsm66["CHANGE_TIME"].ToString() + "','YYYYMMDDHH24MISS')) from DUAL";
 			break;
 		}
 		cmd_inq.Parameters.Clear();
@@ -107,7 +115,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 		case DB_KIND_MSSQL:	        // MS SQL Server数据库
 		case DB_KIND_ORACLE:	    // Oracle 数据库
 		default:
-			sqlstr = "select TIMESTAMPDIFF(8, CHAR(TIMESTAMP('" + ttmsm66["CHANGE_TIME"].ToString() + "')  - TIMESTAMP('" + ttmsm66["REC_CREATE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+			// DM8 适配 CHANGE-346:查询设备状态记录持续小时数,写入 hours_diffx。
+			// 改写原因：DB2 两参数 TIMESTAMPDIFF(8=小时) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+			//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+			//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+			// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+			// 原 SQL（完整保留）：
+			// sqlstr = "select TIMESTAMPDIFF(8, CHAR(TIMESTAMP('" + ttmsm66["CHANGE_TIME"].ToString() + "')  - TIMESTAMP('" + ttmsm66["REC_CREATE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+			// DM8 SQL：
+			sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + ttmsm66["REC_CREATE_TIME"].ToString() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + ttmsm66["CHANGE_TIME"].ToString() + "','YYYYMMDDHH24MISS')) / 3600 from DUAL";
 			//sqlstr = "select timestampdiff(8, char(timestamp(sysdate) - timestamp('2023-05-25 10:14:01'))) AS "间隔小时" from ttmsm66
 			break;
 		}
@@ -135,7 +151,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 		case DB_KIND_MSSQL:	        // MS SQL Server数据库
 		case DB_KIND_ORACLE:	    // Oracle 数据库
 		default:
-			sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + ttmsm66["CHANGE_TIME"].ToString() + "')  - TIMESTAMP('" + ttmsm66["REC_CREATE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+			// DM8 适配 CHANGE-347:查询设备状态记录持续分钟数,写入 minutes_diffx 并累计到 all_time。
+			// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+			//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+			//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+			// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+			// 原 SQL（完整保留）：
+			// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + ttmsm66["CHANGE_TIME"].ToString() + "')  - TIMESTAMP('" + ttmsm66["REC_CREATE_TIME"].ToString() + "'))) from SYSIBM.SYSDUMMY1";
+			// DM8 SQL：
+			sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + ttmsm66["REC_CREATE_TIME"].ToString() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + ttmsm66["CHANGE_TIME"].ToString() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 			//sqlstr = "select timestampdiff(8, char(timestamp(sysdate) - timestamp('2023-05-25 10:14:01'))) AS "间隔分钟" from ttmsm66
 			break;
 		}
@@ -244,7 +268,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 						//}
 						//cmd_inq.Close();
 
-						sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 适配 CHANGE-348:查询倒罐作业(TMMSM12)开始到结束的分钟数,累计 use_time。
+						// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+						//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+						//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+						// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+						// 原 SQL（完整保留）：
+						// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 SQL：
+						sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 						cmd_inq.Parameters.Clear();
 						cmd_inq.SetCommandText(sqlstr);
 						Log::Trace("", "", "倒灌时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -283,7 +315,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 				{
 					if (dt_temp.Rows[j]["START_TIME"].ToString().Trim().GetLength() > 0 && dt_temp.Rows[j]["END_TIME"].ToString().Trim().GetLength() > 0)
 					{
-						sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 适配 CHANGE-349:查询脱硫作业(TMMSM14)开始到结束的分钟数,累计 use_time。
+						// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+						//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+						//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+						// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+						// 原 SQL（完整保留）：
+						// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 SQL：
+						sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 						cmd_inq.Parameters.Clear();
 						cmd_inq.SetCommandText(sqlstr);
 						Log::Trace("", "", "脱硫时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -323,7 +363,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 				{
 					if (dt_temp.Rows[j]["START_TIME"].ToString().Trim().GetLength() > 0 && dt_temp.Rows[j]["END_TIME"].ToString().Trim().GetLength() > 0)
 					{
-						sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 适配 CHANGE-350:查询转炉作业(TMMSM21)开始到结束的分钟数,累计 use_time。
+						// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+						//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+						//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+						// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+						// 原 SQL（完整保留）：
+						// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 SQL：
+						sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 						cmd_inq.Parameters.Clear();
 						cmd_inq.SetCommandText(sqlstr);
 						Log::Trace("", "", "转炉时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -363,7 +411,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 				{
 					if (dt_temp.Rows[j]["START_TIME"].ToString().Trim().GetLength() > 0 && dt_temp.Rows[j]["END_TIME"].ToString().Trim().GetLength() > 0)
 					{
-						sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 适配 CHANGE-351:查询吹氩作业(TMMSM22)开始到结束的分钟数,累计 use_time。
+						// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+						//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+						//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+						// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+						// 原 SQL（完整保留）：
+						// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 SQL：
+						sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 						cmd_inq.Parameters.Clear();
 						cmd_inq.SetCommandText(sqlstr);
 						Log::Trace("", "", "吹氩时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -403,7 +459,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 				{
 					if (dt_temp.Rows[j]["START_TIME"].ToString().Trim().GetLength() > 0 && dt_temp.Rows[j]["END_TIME"].ToString().Trim().GetLength() > 0)
 					{
-						sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 适配 CHANGE-352:查询RH作业(TMMSM23)开始到结束的分钟数,累计 use_time。
+						// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+						//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+						//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+						// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+						// 原 SQL（完整保留）：
+						// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 SQL：
+						sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 						cmd_inq.Parameters.Clear();
 						cmd_inq.SetCommandText(sqlstr);
 						Log::Trace("", "", "RH时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -443,7 +507,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 				{
 					if (dt_temp.Rows[j]["START_TIME"].ToString().Trim().GetLength() > 0 && dt_temp.Rows[j]["END_TIME"].ToString().Trim().GetLength() > 0)
 					{
-						sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 适配 CHANGE-353:查询LF作业(TMMSM22)开始到结束的分钟数,累计 use_time。
+						// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+						//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+						//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+						// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+						// 原 SQL（完整保留）：
+						// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 SQL：
+						sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 						cmd_inq.Parameters.Clear();
 						cmd_inq.SetCommandText(sqlstr);
 						Log::Trace("", "", "LF时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -483,7 +555,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 				{
 					if (dt_temp.Rows[j]["START_TIME"].ToString().Trim().GetLength() > 0 && dt_temp.Rows[j]["END_TIME"].ToString().Trim().GetLength() > 0)
 					{
-						sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 适配 CHANGE-354:查询连铸作业(TMMSM31)开始到结束的分钟数,累计 use_time。
+						// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+						//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+						//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+						// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+						// 原 SQL（完整保留）：
+						// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+						// DM8 SQL：
+						sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["START_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["END_TIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 						cmd_inq.Parameters.Clear();
 						cmd_inq.SetCommandText(sqlstr);
 						Log::Trace("", "", "连铸时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -520,7 +600,15 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 			{
 				if (dt_temp.Rows[j]["S_DATETIME"].ToString().Trim().GetLength() > 0 && dt_temp.Rows[j]["E_DATETIME"].ToString().Trim().GetLength() > 0)
 				{
-					sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["E_DATETIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["S_DATETIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+					// DM8 适配 CHANGE-355:查询维修作业(TTMSM95,STATUS=11)开始到结束的分钟数,累计 repair_time。
+					// 改写原因：DB2 两参数 TIMESTAMPDIFF(4=分钟) 在 DM8 无对应写法,按 HR-002 确认口径①(实际完整时长)
+					//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+					//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+					// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+					// 原 SQL（完整保留）：
+					// sqlstr = "select TIMESTAMPDIFF(4, CHAR(TIMESTAMP('" + dt_temp.Rows[j]["E_DATETIME"].ToString().Trim() + "')  - TIMESTAMP('" + dt_temp.Rows[j]["S_DATETIME"].ToString().Trim() + "'))) from SYSIBM.SYSDUMMY1";
+					// DM8 SQL：
+					sqlstr = "select DATEDIFF(SECOND, TO_TIMESTAMP('" + dt_temp.Rows[j]["S_DATETIME"].ToString().Trim() + "','YYYYMMDDHH24MISS'), TO_TIMESTAMP('" + dt_temp.Rows[j]["E_DATETIME"].ToString().Trim() + "','YYYYMMDDHH24MISS')) / 60 from DUAL";
 					cmd_inq.Parameters.Clear();
 					cmd_inq.SetCommandText(sqlstr);
 					Log::Trace("", "", "维修时间差分钟语句 sqlstr：{0}", sqlstr);
@@ -546,9 +634,19 @@ int f_tmsme96_inq(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn)
 			//SELECT round(:use_time / 60, 2), round((:all_time - : use_time) / 60, 2), round(:repair_time / 60, 2), round((:use_time / : all_time) * 100, 2)
 			//INTO :use_time, : free_time, : repair_time, : good_rate
 			//	  FROM sysibm.dual;
-			sqlstr = "SELECT ROUND(" + use_time.ToString() + "/60,2),ROUND((" + all_time.ToString()+" - "+ use_time.ToString() + ")/ 60, 2), ROUND(" 
+			// DM8 适配 CHANGE-109:汇总使用/空闲/维修时长(小时)与作业率(good_rate),纯算术表达式。
+			// 改写原因：SYSIBM.SYSDUMMY1 辅助表改为 DUAL;计算口径与参数不变;按 HR-002 确认口径①(实际完整时长)
+			//   改为 DATEDIFF(SECOND,起点,终点)/因子,整数除法与 DB2 截断行为一致。
+			//   时间值为 14 位 YYYYMMDDHH24MISS(HR-001 已确认),用 TO_TIMESTAMP 显式指定;SYSIBM 辅助表改为 DUAL;依据 DM 官方文档,DM8 尚未实测。
+			// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+			// 原 SQL（完整保留）：
+			// sqlstr = "SELECT ROUND(" + use_time.ToString() + "/60,2),ROUND((" + all_time.ToString()+" - "+ use_time.ToString() + ")/ 60, 2), ROUND("
+			// "" + repair_time.ToString() + " / 60, 2),ROUND((" + use_time.ToString() + "/" + all_time.ToString() + ") * 100, 2)"
+			// " FROM SYSIBM.SYSDUMMY1";
+			// DM8 SQL：
+			sqlstr = "SELECT ROUND(" + use_time.ToString() + "/60,2),ROUND((" + all_time.ToString()+" - "+ use_time.ToString() + ")/ 60, 2), ROUND("
 				"" + repair_time.ToString() + " / 60, 2),ROUND((" + use_time.ToString() + "/" + all_time.ToString() + ") * 100, 2)"
-				 " FROM SYSIBM.SYSDUMMY1";
+				 " FROM DUAL";
 			cmd_inq.Parameters.Clear();
 			cmd_inq.SetCommandText(sqlstr);
 			Log::Trace("", "", "总结时间差分钟语句 sqlstr：{0}", sqlstr);

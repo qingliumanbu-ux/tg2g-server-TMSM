@@ -61,13 +61,29 @@ int f_tmsm11av_inq(EIClass* bcls_rec, EIClass* bcls_ret, CDbConnection* conn)
 		Log::Trace("", "", "", "v_tab", v_tab);
 		if (v_tab=="TAB1")
 		{
+// DM8 适配 CHANGE-114:查询。SUBSTR2 改为 SUBSTR。
+// 改写原因：SUBSTR2 改为 DM 文档支持的 SUBSTR(按字符截取;BMP 字符下与码点语义一致);位置参数 0 显式改为 1,保持 Oracle 原语义；依据 DM 官方文档,DM8 尚未实测。
+// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+// 原 SQL（完整保留）：
+			// sql = " WITH TM11 AS (SELECT * \
+				// FROM(SELECT row_number() over(partition by LADLE_NO ORDER BY RESUME_SEQ_NO desc) ROW_ID, A.* \
+					// FROM(SELECT * FROM TTMSM11) A) \
+				// WHERE ROW_ID = 1) \
+				// SELECT CODE_DESC_1_CONTENT LADLE_NO, TM11.WORK_MAKER, TM11.ABN_REASON,  tm11.DRYING_ST,TM11.DRYING_ET, TM11.BAKE_TYPE, TM11.BAKE_POS, TM11.UPLOAD_TIME, TM11.UPLOADER, TM11.MEMO_DETAIL, TM11.RESUME_SEQ_NO, TM11.LADLE_STATUS, \
+				 // case when TM11.LADLE_HEATING_DURATION = 0 and tm11.DRYING_ST != ' ' then CEIL((sysdate - TO_DATE(tm11.DRYING_ST, 'yyyy-mm-dd hh24-mi-ss')) * 24 ) else TM11.LADLE_HEATING_DURATION end LADLE_HEATING_DURATION,\
+				 // (select * from (select LADLE_LIFE from ttmsm12 where LADLE_NO = substr2(TM11.LADLE_NO, 3, 2) and REC_CREATE_TIME > TM11.UPLOAD_TIME and C_DIV = 'A' order by TTMSM12.REC_CREATE_TIME desc) where ROWNUM = 1)  LADLE_LIFE \
+				// FROM TWMSMZD02 T1 \
+				// LEFT JOIN TM11 ON T1.CODE_DESC_1_CONTENT = TM11.LADLE_NO \
+				// WHERE CODE_CLASS = 'TM01' \
+				// ORDER BY CODE_DESC_1_CONTENT ";
+// DM8 SQL：
 			sql = " WITH TM11 AS (SELECT * \
 				FROM(SELECT row_number() over(partition by LADLE_NO ORDER BY RESUME_SEQ_NO desc) ROW_ID, A.* \
 					FROM(SELECT * FROM TTMSM11) A) \
 				WHERE ROW_ID = 1) \
 				SELECT CODE_DESC_1_CONTENT LADLE_NO, TM11.WORK_MAKER, TM11.ABN_REASON,  tm11.DRYING_ST,TM11.DRYING_ET, TM11.BAKE_TYPE, TM11.BAKE_POS, TM11.UPLOAD_TIME, TM11.UPLOADER, TM11.MEMO_DETAIL, TM11.RESUME_SEQ_NO, TM11.LADLE_STATUS, \
 				 case when TM11.LADLE_HEATING_DURATION = 0 and tm11.DRYING_ST != ' ' then CEIL((sysdate - TO_DATE(tm11.DRYING_ST, 'yyyy-mm-dd hh24-mi-ss')) * 24 ) else TM11.LADLE_HEATING_DURATION end LADLE_HEATING_DURATION,\
-				 (select * from (select LADLE_LIFE from ttmsm12 where LADLE_NO = substr2(TM11.LADLE_NO, 3, 2) and REC_CREATE_TIME > TM11.UPLOAD_TIME and C_DIV = 'A' order by TTMSM12.REC_CREATE_TIME desc) where ROWNUM = 1)  LADLE_LIFE \
+				 (select * from (select LADLE_LIFE from ttmsm12 where LADLE_NO = SUBSTR(TM11.LADLE_NO, 3, 2) and REC_CREATE_TIME > TM11.UPLOAD_TIME and C_DIV = 'A' order by TTMSM12.REC_CREATE_TIME desc) where ROWNUM = 1)  LADLE_LIFE \
 				FROM TWMSMZD02 T1 \
 				LEFT JOIN TM11 ON T1.CODE_DESC_1_CONTENT = TM11.LADLE_NO \
 				WHERE CODE_CLASS = 'TM01' \

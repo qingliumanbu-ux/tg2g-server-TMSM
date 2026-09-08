@@ -91,13 +91,27 @@ int f_tmsme91a1_act(EIClass * bcls_rec, EIClass * bcls_ret, CDbConnection * conn
 			//	AND DEV_NO = : ttmsm91.main_dev_no /*设备编号*/
 			//	AND CHAR_NO = : ttmsm91.char_no /*char_no号*/;
 
+// DM8 适配 CHANGE-113:更新 TTMSM92。空值搜索 DECODE 改为标准 CASE。
+// 改写原因：空值搜索 DECODE 改为标准 CASE,不依赖 NULL 相等匹配的未记载语义；依据 DM 官方文档,DM8 尚未实测。
+// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+// 原 SQL（完整保留）：
+			// sqlstr = "UPDATE TTMSM92 SET REC_REVISOR= '" + ttmsm91["REC_REVISOR"].ToString() + "',"
+				// "REC_REVISE_TIME = '" + ttmsm91["REC_REVISE_TIME"].ToString() + "',"
+				// "LAST_CHILD_DEV_NO = CHILD_DEV_NO,LAST_CHILD_DEV_NAME = CHILD_DEV_NAME ," 
+				// "CHILD_DEV_NO = '" + ttmsm92["BACK_C1"].ToString() + "',"//+ ttmsm92["CHILD_DEV_NAME"].ToString() + "',"		/*作业车间*/
+				// "CHILD_DEV_NAME= '" + ttmsm91["DEV_NAME"].ToString() + "',"		/*设备类型*/
+				// "CHANGE_TIME= '" + ttmsm91["E_DATETIME"].ToString() + "',"	/*设备名称 设备号*/
+				// "DEV_CHANGE_TIMES = decode(trim('" + ttmsm92["CHILD_DEV_NAME"].ToString() + "'), '', DEV_CHANGE_TIMES, DEV_CHANGE_TIMES + 1)"			/*状态*/
+				// " WHERE SM_UNIT_NO = '" + ttmsm91["SM_UNIT_NO"].ToString() + "' AND DEV_NO = '" + ttmsm92["CHILD_DEV_NAME"].ToString() + "'"
+				// " AND SECTION_MODE = '" + ttmsm92["SECTION_MODE"].ToString() + "'";
+// DM8 SQL：
 			sqlstr = "UPDATE TTMSM92 SET REC_REVISOR= '" + ttmsm91["REC_REVISOR"].ToString() + "',"
 				"REC_REVISE_TIME = '" + ttmsm91["REC_REVISE_TIME"].ToString() + "',"
 				"LAST_CHILD_DEV_NO = CHILD_DEV_NO,LAST_CHILD_DEV_NAME = CHILD_DEV_NAME ," 
 				"CHILD_DEV_NO = '" + ttmsm92["BACK_C1"].ToString() + "',"//+ ttmsm92["CHILD_DEV_NAME"].ToString() + "',"		/*作业车间*/
 				"CHILD_DEV_NAME= '" + ttmsm91["DEV_NAME"].ToString() + "',"		/*设备类型*/
 				"CHANGE_TIME= '" + ttmsm91["E_DATETIME"].ToString() + "',"	/*设备名称 设备号*/
-				"DEV_CHANGE_TIMES = decode(trim('" + ttmsm92["CHILD_DEV_NAME"].ToString() + "'), '', DEV_CHANGE_TIMES, DEV_CHANGE_TIMES + 1)"			/*状态*/
+				"DEV_CHANGE_TIMES = CASE WHEN trim('" + ttmsm92["CHILD_DEV_NAME"].ToString() + "') IS NULL OR trim('" + ttmsm92["CHILD_DEV_NAME"].ToString() + "') = '' THEN DEV_CHANGE_TIMES ELSE DEV_CHANGE_TIMES + 1 END"			/*状态*/
 				" WHERE SM_UNIT_NO = '" + ttmsm91["SM_UNIT_NO"].ToString() + "' AND DEV_NO = '" + ttmsm92["CHILD_DEV_NAME"].ToString() + "'"
 				" AND SECTION_MODE = '" + ttmsm92["SECTION_MODE"].ToString() + "'";
 

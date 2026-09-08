@@ -104,7 +104,13 @@ int f_tmsm53_ins(EIClass * bcls_rec, EIClass * bcls_ret,CDbConnection * conn)
 				{
 					crane_inst_seq = EPGetNextSeq("CRANE_INST_NO_3", conn);
 				}
-				sqlstr = "select '" + oper_place.Substring(0, 1) + "'||lpad('" + crane_inst_seq + "', 6, '0') from sysibm.dual";
+// DM8 适配 CHANGE-111:查询。SYSIBM 辅助表改为 DUAL。
+// 改写原因：SYSIBM 辅助表改为 DUAL；依据 DM 官方文档,DM8 尚未实测。
+// 本共用分支面向 DM8,其他 DB_KIND 标签也会执行此 SQL;参数、结果列、条件与排序保持不变。
+// 原 SQL（完整保留）：
+				// sqlstr = "select '" + oper_place.Substring(0, 1) + "'||lpad('" + crane_inst_seq + "', 6, '0') from sysibm.dual";
+// DM8 SQL：
+				sqlstr = "select '" + oper_place.Substring(0, 1) + "'||lpad('" + crane_inst_seq + "', 6, '0') from DUAL";
 				cmd_inq.SetCommandText(sqlstr);
 				cmd_inq.ExecuteReader();
 				if (cmd_inq.Read())
